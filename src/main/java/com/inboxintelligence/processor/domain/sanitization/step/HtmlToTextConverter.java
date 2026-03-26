@@ -1,6 +1,6 @@
 package com.inboxintelligence.processor.domain.sanitization.step;
 
-import com.inboxintelligence.processor.cleaning.SanitizationStep;
+import com.inboxintelligence.processor.config.SanitizationStep;
 import org.apache.commons.lang3.StringUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -13,15 +13,15 @@ import org.jsoup.select.NodeVisitor;
 import java.util.Set;
 
 @SanitizationStep(order = 1, description = "Convert HTML to plain text using Jsoup")
-public class HtmlToTxtConverter {
+public class HtmlToTextConverter {
 
-    private static final Set<String> BLOCK_TAGS = Set.of("p", "div", "tr", "li", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "pre", "hr", "table", "thead", "tbody", "ul", "ol", "br");
+    private static final Set<String> BLOCK_TAGS = Set.of("p", "div", "tr", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "pre", "hr", "table", "thead", "tbody", "ul", "ol");
     private static final Set<String> TABLE_TAGS = Set.of("td", "th");
     private static final Set<String> HTML_HINTS = Set.of("<html", "<body", "<div", "<p>", "<br");
 
     public String process(String content) {
 
-        if (content == null || content.isBlank() || HTML_HINTS.stream().noneMatch(content::contains)) {
+        if (HTML_HINTS.stream().noneMatch(content::contains)) {
             return content;
         }
 
@@ -45,11 +45,12 @@ public class HtmlToTxtConverter {
                 if (node instanceof TextNode textNode) {
                     sb.append(textNode.text());
                 } else if (node instanceof Element el) {
-                    if (BLOCK_TAGS.contains(el.normalName())) {
+                    String tag = el.normalName();
+                    if ("br".equals(tag) || BLOCK_TAGS.contains(tag)) {
                         sb.append('\n');
-                    } else if ("li".equals(el.normalName())) {
+                    } else if ("li".equals(tag)) {
                         sb.append("\n- ");
-                    } else if (TABLE_TAGS.contains(el.normalName())) {
+                    } else if (TABLE_TAGS.contains(tag)) {
                         sb.append(" | ");
                     }
                 }
@@ -59,10 +60,10 @@ public class HtmlToTxtConverter {
             public void tail(Node node, int depth) {
                 if (node instanceof Element el) {
                     if (BLOCK_TAGS.contains(el.normalName())) {
-                        sb.append("\n");
+                        sb.append('\n');
                     } else if ("a".equals(el.normalName()) && el.hasAttr("href")) {
                         String href = el.attr("href");
-                        if (!StringUtils.equals(el.text(), el.attr("href"))) {
+                        if (!StringUtils.equals(el.text(), href)) {
                             sb.append(" (").append(href).append(")");
                         }
                     }
