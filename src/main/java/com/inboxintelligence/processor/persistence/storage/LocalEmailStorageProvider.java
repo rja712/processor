@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -30,6 +31,29 @@ public class LocalEmailStorageProvider implements EmailStorageProvider {
         } catch (IOException e) {
             log.error("Failed to read storage file: {}", storagePath, e);
             throw new RuntimeException("Failed to read storage file: " + storagePath, e);
+        }
+    }
+
+    @Override
+    public String writeContent(String directoryPath, String fileName, String content) {
+
+        if (content == null) {
+            return null;
+        }
+
+        try {
+            Path dir = Path.of(directoryPath);
+            Files.createDirectories(dir);
+
+            Path filePath = dir.resolve(fileName);
+            Files.writeString(filePath, content, StandardCharsets.UTF_8);
+
+            log.debug("Content stored locally: {}", filePath);
+            return filePath.toAbsolutePath().toString();
+
+        } catch (IOException e) {
+            log.error("Failed to write content to {}/{}", directoryPath, fileName, e);
+            throw new RuntimeException("Failed to write content", e);
         }
     }
 

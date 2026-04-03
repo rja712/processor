@@ -4,4 +4,6 @@ public interface EmailStorageProvider {
 
     String readContent(String storagePath);
 
+    String writeContent(String directoryPath, String fileName, String content);
+
 }

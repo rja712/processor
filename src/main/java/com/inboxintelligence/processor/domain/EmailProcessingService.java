@@ -10,6 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.nio.file.Path;
+
 import static com.inboxintelligence.processor.model.ProcessedStatus.*;
 
 @Service
@@ -33,6 +35,9 @@ public class EmailProcessingService {
 
             String cleanedText = sanitizeEmailContent(emailContent);
 
+            String processedContentPath = storeProcessedContent(emailContent, cleanedText);
+            emailContent.setProcessedContentPath(processedContentPath);
+
             emailContent.setProcessedStatus(PROCESSING_COMPLETED);
             emailContentService.save(emailContent);
 
@@ -43,6 +48,22 @@ public class EmailProcessingService {
             emailContent.setProcessedStatus(PROCESSING_FAILED);
             emailContentService.save(emailContent);
         }
+    }
+
+    private String storeProcessedContent(EmailContent email, String cleanedText) {
+
+        if (!StringUtils.hasText(cleanedText)) {
+            return null;
+        }
+
+        String existingPath = StringUtils.hasText(email.getBodyHtmlContentPath())
+                ? email.getBodyHtmlContentPath()
+                : email.getBodyContentPath();
+
+        String directoryPath = Path.of(existingPath).getParent().toString();
+        var provider = storageProviderFactory.getProvider();
+
+        return provider.writeContent(directoryPath, "processed_content.txt", cleanedText);
     }
 
     private String sanitizeEmailContent(EmailContent email) {
