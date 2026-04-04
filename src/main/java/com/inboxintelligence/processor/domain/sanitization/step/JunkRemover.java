@@ -11,6 +11,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -25,9 +26,19 @@ public class JunkRemover {
 
     @PostConstruct
     void init() {
-        quotedTextPatterns = properties.quotedTextPatterns().stream().map(Pattern::compile).toList();
-        signaturePatterns = properties.signaturePatterns().stream().map(Pattern::compile).toList();
+        quotedTextPatterns = compilePatterns(properties.quotedTextPatterns(), "quoted-text");
+        signaturePatterns = compilePatterns(properties.signaturePatterns(), "signature");
         log.info("Compiled {} quoted-text and {} signature patterns", quotedTextPatterns.size(), signaturePatterns.size());
+    }
+
+    private List<Pattern> compilePatterns(List<String> patterns, String category) {
+        return patterns.stream().map(regex -> {
+            try {
+                return Pattern.compile(regex);
+            } catch (PatternSyntaxException e) {
+                throw new IllegalStateException("Invalid " + category + " regex pattern: " + regex, e);
+            }
+        }).toList();
     }
 
     public String process(String content) {
@@ -117,7 +128,7 @@ public class JunkRemover {
         }
 
         if (paragraphs.isEmpty()) {
-            return content;
+            return "";
         }
 
         return String.join("\n\n", paragraphs);

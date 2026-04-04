@@ -6,7 +6,7 @@ spring:
     name: processor
 
   datasource:
-    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/inbox-intelligence
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
@@ -35,12 +35,13 @@ spring:
           max-interval: 10000
 
 rabbitmq:
-  exchange: email-events
-  queue: email-processed
-  routing-key: email.processed
+  exchange: ${RABBITMQ_EXCHANGE}
+  queue: ${RABBITMQ_QUEUE}
+  routing-key: ${RABBITMQ_ROUTING_KEY}
 
 email-storage:
   provider: ${EMAIL_STORAGE_PROVIDER}
+  local-base-path: ${EMAIL_STORAGE_LOCAL_BASE_PATH}
 
 sanitization:
   quoted-text-patterns:

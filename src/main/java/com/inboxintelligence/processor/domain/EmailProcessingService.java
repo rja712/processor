@@ -1,7 +1,6 @@
 package com.inboxintelligence.processor.domain;
 
 import com.inboxintelligence.processor.domain.sanitization.ContentSanitizationPipelineRegistry;
-import com.inboxintelligence.persistence.model.ProcessedStatus;
 import com.inboxintelligence.persistence.model.entity.EmailContent;
 import com.inboxintelligence.persistence.service.EmailContentService;
 import com.inboxintelligence.persistence.storage.EmailStorageProviderFactory;
@@ -11,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.nio.file.Path;
+import java.util.Objects;
 
 import static com.inboxintelligence.persistence.model.ProcessedStatus.*;
 
@@ -62,7 +62,17 @@ public class EmailProcessingService {
                 ? email.getBodyHtmlContentPath()
                 : email.getBodyContentPath();
 
-        String directoryPath = Path.of(existingPath).getParent().toString();
+        if (!StringUtils.hasText(existingPath)) {
+            throw new IllegalStateException("No valid content path found for email id: " + email.getId());
+        }
+
+        Path parentPath = Path.of(existingPath).getParent();
+
+        if (parentPath == null) {
+            throw new IllegalStateException("Cannot resolve parent directory from path: " + existingPath);
+        }
+
+        String directoryPath = parentPath.toString();
         var provider = storageProviderFactory.getProvider();
 
         return provider.writeContent(directoryPath, "processed_content.txt", cleanedText);
@@ -72,8 +82,9 @@ public class EmailProcessingService {
 
         var provider = storageProviderFactory.getProvider();
 
-        String bodyContent = provider.readContent(email.getBodyContentPath());
-        String htmlContent = provider.readContent(email.getBodyHtmlContentPath());
+        String bodyContent = Objects.requireNonNullElse(provider.readContent(email.getBodyContentPath()), "");
+        String htmlContent = Objects.requireNonNullElse(provider.readContent(email.getBodyHtmlContentPath()), "");
+
         log.debug("Content for email [id={}]: body={} chars, html={} chars", email.getId(), bodyContent.length(), htmlContent.length());
 
         String rawContent;

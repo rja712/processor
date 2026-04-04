@@ -42,5 +42,8 @@ out/
 ### Local Data ###
 data/
 
+### macOS ###
+.DS_Store
+
 ### Environment ###
 .env

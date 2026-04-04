@@ -6,10 +6,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
-import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
-import java.lang.reflect.Method;
 import java.util.Comparator;
 import java.util.List;
 
@@ -60,7 +58,7 @@ public class ContentSanitizationPipelineRegistry {
             }
             throw new IllegalStateException(getSanitizationStepName(bean) + ": process(String) must return String");
         } catch (Exception e) {
-            throw new IllegalStateException(getSanitizationStepName(bean) + ": must have 'public String process(String)' method");
+            throw new IllegalStateException(getSanitizationStepName(bean) + ": must have 'public String process(String)' method", e);
         }
     }
 

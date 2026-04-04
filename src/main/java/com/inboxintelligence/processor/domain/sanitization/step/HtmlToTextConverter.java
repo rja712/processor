@@ -22,6 +22,10 @@ public class HtmlToTextConverter {
 
     public String process(String content) {
 
+        if (content == null) {
+            return "";
+        }
+
         if (HTML_HINTS.stream().noneMatch(content::contains)) {
             return content;
         }
