@@ -38,10 +38,18 @@ rabbitmq:
   exchange: ${RABBITMQ_EXCHANGE}
   queue: ${RABBITMQ_QUEUE}
   routing-key: ${RABBITMQ_ROUTING_KEY}
+  embedding:
+    queue: ${RABBITMQ_EMBEDDING_QUEUE}
+    routing-key: ${RABBITMQ_EMBEDDING_ROUTING_KEY}
 
 email-storage:
   provider: ${EMAIL_STORAGE_PROVIDER}
   local-base-path: ${EMAIL_STORAGE_LOCAL_BASE_PATH}
+
+embedding:
+  provider: ${EMBEDDING_PROVIDER}
+  ollama-url: ${EMBEDDING_OLLAMA_URL}
+  model: ${EMBEDDING_MODEL}
 
 sanitization:
   quoted-text-patterns:

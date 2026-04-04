@@ -1,0 +1,35 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    database-platform: org.hibernate.dialect.H2Dialect
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    listener:
+      simple:
+        auto-startup: false
+
+rabbitmq:
+  exchange: test-exchange
+  queue: test-queue
+  routing-key: test.key
+  embedding:
+    queue: test-embedding-queue
+    routing-key: test.embedding.key
+
+email-storage:
+  provider: LOCAL
+  local-base-path: /tmp/processor-test-data
+
+embedding:
+  provider: ollama
+  ollama-url: http://localhost:11434/api/embeddings
+  model: test-model

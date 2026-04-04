@@ -1,11 +1,15 @@
 package com.inboxintelligence.processor.domain;
 
-import com.inboxintelligence.processor.domain.sanitization.ContentSanitizationPipelineRegistry;
+import com.inboxintelligence.persistence.config.RabbitMQProperties;
 import com.inboxintelligence.persistence.model.entity.EmailContent;
 import com.inboxintelligence.persistence.service.EmailContentService;
 import com.inboxintelligence.persistence.storage.EmailStorageProviderFactory;
+import com.inboxintelligence.processor.config.EmbeddingQueueProperties;
+import com.inboxintelligence.processor.domain.sanitization.ContentSanitizationPipelineRegistry;
+import com.inboxintelligence.processor.model.EmailSanitizedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -22,6 +26,9 @@ public class EmailProcessingService {
     private final EmailContentService emailContentService;
     private final EmailStorageProviderFactory storageProviderFactory;
     private final ContentSanitizationPipelineRegistry pipelineRegistry;
+    private final RabbitTemplate rabbitTemplate;
+    private final RabbitMQProperties rabbitMQProperties;
+    private final EmbeddingQueueProperties embeddingQueueProperties;
 
     public void processEmail(Long emailContentId) {
 
@@ -30,7 +37,7 @@ public class EmailProcessingService {
                 .orElseThrow(() -> new RuntimeException("EmailContent not found for id: " + emailContentId));
 
         try {
-            emailContent.setProcessedStatus(PROCESSING_STARTED);
+            emailContent.setProcessedStatus(SANITIZATION_STARTED);
             emailContentService.save(emailContent);
 
             String cleanedText = sanitizeEmailContent(emailContent);
@@ -38,10 +45,12 @@ public class EmailProcessingService {
             String processedContentPath = storeProcessedContent(emailContent, cleanedText);
             emailContent.setProcessedContentPath(processedContentPath);
 
-            emailContent.setProcessedStatus(PROCESSING_COMPLETED);
+            emailContent.setProcessedStatus(SANITIZATION_COMPLETED);
             emailContentService.save(emailContent);
 
-            log.info("EmailContent [id={}] processed successfully", emailContentId);
+            publishEmbeddingEvent(emailContentId);
+
+            log.info("EmailContent [id={}] sanitized and queued for embedding", emailContentId);
 
         } catch (Exception e) {
 
@@ -50,6 +59,15 @@ public class EmailProcessingService {
             emailContent.setProcessedStatus(PROCESSING_FAILED);
             emailContentService.save(emailContent);
         }
+    }
+
+    private void publishEmbeddingEvent(Long emailContentId) {
+        rabbitTemplate.convertAndSend(
+                rabbitMQProperties.exchange(),
+                embeddingQueueProperties.routingKey(),
+                new EmailSanitizedEvent(emailContentId)
+        );
+        log.debug("Published EmailSanitizedEvent for emailContentId: {}", emailContentId);
     }
 
     private String storeProcessedContent(EmailContent email, String cleanedText) {
