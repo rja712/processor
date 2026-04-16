@@ -16,20 +16,18 @@ spring:
     listener:
       simple:
         auto-startup: false
-    email-processing:
+    email-event:
       exchange: test-exchange
-      queue: test-queue
-      routing-key: test.key
-    email-embedding:
-      exchange: test-exchange
-      queue: test-embedding-queue
-      routing-key: test.embedding.key
+      sanitization-queue: test-sanitization-queue
+      sanitization-routing-key: test.sanitization.key
+      embedding-queue: test-embedding-queue
+      embedding-routing-key: test.embedding.key
 
-email-storage:
-  provider: LOCAL
+email-storage-provider:
+  name: LOCAL
   local-base-path: /tmp/processor-test-data
 
-embedding:
-  provider: ollama
+embedding-provider:
+  name: ollama
   ollama-url: http://localhost:11434/api/embeddings
   model: test-model

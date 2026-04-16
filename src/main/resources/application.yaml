@@ -24,21 +24,22 @@ spring:
     port: ${RABBITMQ_PORT}
     username: ${RABBITMQ_USERNAME}
     password: ${RABBITMQ_PASSWORD}
-    email-processing:
-      exchange: ${RABBITMQ_PROCESSING_EXCHANGE}
-      queue: ${RABBITMQ_PROCESSING_QUEUE}
-      routing-key: ${RABBITMQ_PROCESSING_ROUTING_KEY}
-    email-embedding:
-      exchange: ${RABBITMQ_EMBEDDING_EXCHANGE}
-      queue: ${RABBITMQ_EMBEDDING_QUEUE}
-      routing-key: ${RABBITMQ_EMBEDDING_ROUTING_KEY}
+    listener:
+      simple:
+        default-requeue-rejected: false
+    email-event:
+      exchange: ${RABBITMQ_EMAIL_EVENT_EXCHANGE}
+      sanitization-queue: ${RABBITMQ_EMAIL_SANITIZATION_QUEUE}
+      sanitization-routing-key: ${RABBITMQ_EMAIL_SANITIZATION_ROUTING_KEY}
+      embedding-queue: ${RABBITMQ_EMAIL_EMBEDDING_QUEUE}
+      embedding-routing-key: ${RABBITMQ_EMAIL_EMBEDDING_ROUTING_KEY}
 
-email-storage:
-  provider: ${EMAIL_STORAGE_PROVIDER}
+email-storage-provider:
+  name: ${EMAIL_STORAGE_PROVIDER_NAME}
   local-base-path: ${EMAIL_STORAGE_LOCAL_BASE_PATH}
 
-embedding-vendor:
-  provider: ${EMBEDDING_PROVIDER}
+embedding-provider:
+  name: ${EMBEDDING_PROVIDER_NAME}
   ollama-url: ${EMBEDDING_OLLAMA_URL}
   model: ${EMBEDDING_MODEL}
   num-ctx: 8192

@@ -1,4 +1,4 @@
-package com.inboxintelligence.processor.domain.embedding;
+package com.inboxintelligence.processor.domain.embedding.factory;
 
 import java.util.List;
 

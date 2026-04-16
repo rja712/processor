@@ -1,10 +1,10 @@
-package com.inboxintelligence.processor.domain;
+package com.inboxintelligence.processor.domain.sanitization;
 
 import com.inboxintelligence.persistence.model.entity.EmailContent;
 import com.inboxintelligence.persistence.service.EmailContentService;
 import com.inboxintelligence.persistence.storage.EmailStorageProviderFactory;
-import com.inboxintelligence.processor.domain.sanitization.ContentSanitizationPipelineRegistry;
-import com.inboxintelligence.processor.outbound.EventPublisher;
+import com.inboxintelligence.processor.domain.sanitization.pipeline.ContentSanitizationPipelineRegistry;
+import com.inboxintelligence.processor.outbound.EmailEmbeddingPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -15,9 +15,9 @@ import static com.inboxintelligence.persistence.model.ProcessedStatus.*;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class EmailProcessingService {
+public class EmailSanitizationService {
 
-    private final EventPublisher eventPublisher;
+    private final EmailEmbeddingPublisher emailEmbeddingPublisher;
     private final EmailContentService emailContentService;
     private final EmailStorageProviderFactory storageProviderFactory;
     private final ContentSanitizationPipelineRegistry pipelineRegistry;
@@ -31,13 +31,14 @@ public class EmailProcessingService {
         try {
 
             sanitize(emailContent);
-            eventPublisher.publishEmbeddingEvent(emailContentId);
+            emailEmbeddingPublisher.publishEmbeddingEvent(emailContentId);
             log.info("EmailContent [id={}] sanitized and queued for embedding", emailContentId);
 
         } catch (Exception e) {
             log.error("Failed to process emailContent [id={}]", emailContentId, e);
             emailContent.setProcessedStatus(PROCESSING_FAILED);
             emailContentService.save(emailContent);
+            throw e;
         }
     }
 
@@ -66,13 +67,13 @@ public class EmailProcessingService {
 
             log.info("Sanitized email [id={}, {} -> {} chars]", emailContent.getId(), originalLength, cleanedText.length());
 
-            String processedContentPath = provider.writeContent(emailContent.getId(), emailContent.getMessageId(), "processed_content.txt", cleanedText);
+            String sanitizedContentPath = provider.writeContent(emailContent.getId(), emailContent.getMessageId(), "processed_content.txt", cleanedText);
 
-            emailContent.setProcessedContentPath(processedContentPath);
+            emailContent.setSanitizedContentPath(sanitizedContentPath);
             emailContent.setProcessedStatus(SANITIZATION_COMPLETED);
             emailContentService.save(emailContent);
 
-            log.info("Sanitized content stored at: {} for email id: {}", processedContentPath, emailContent.getId());
+            log.info("Sanitized content stored at: {} for email id: {}", sanitizedContentPath, emailContent.getId());
         }
 
     }

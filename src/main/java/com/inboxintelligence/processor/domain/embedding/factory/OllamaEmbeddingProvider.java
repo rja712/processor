@@ -1,6 +1,6 @@
-package com.inboxintelligence.processor.domain.embedding;
+package com.inboxintelligence.processor.domain.embedding.factory;
 
-import com.inboxintelligence.processor.config.EmbeddingVendorProperties;
+import com.inboxintelligence.processor.config.EmbeddingProviderProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -15,7 +15,7 @@ import java.util.Map;
 public class OllamaEmbeddingProvider implements EmbeddingProvider {
 
     private final RestClient restClient;
-    private final EmbeddingVendorProperties properties;
+    private final EmbeddingProviderProperties properties;
 
     @Override
     public List<Double> generateEmbedding(String text) {

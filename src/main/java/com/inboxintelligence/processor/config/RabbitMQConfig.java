@@ -11,85 +11,89 @@ import org.springframework.context.annotation.Configuration;
 @RequiredArgsConstructor
 public class RabbitMQConfig {
 
-    private final EmailProcessingQueueProperties processingProperties;
-    private final EmailEmbeddingQueueProperties embeddingProperties;
+    private final EmailEventRabbitMQProperties properties;
 
-    // --- Inbound (sanitization queue with DLQ routing) ---
-
-    @Bean
-    public Queue emailInboundQueue() {
-        return QueueBuilder.durable(processingProperties.queue())
-                .withArgument("x-dead-letter-exchange", processingProperties.exchange() + ".dlx")
-                .withArgument("x-dead-letter-routing-key", processingProperties.routingKey() + ".dlq")
-                .build();
-    }
+    // --- Shared email-event exchange + DLX ---
 
     @Bean
-    public TopicExchange emailExchange() {
-        return new TopicExchange(processingProperties.exchange());
-    }
-
-    @Bean
-    public Binding emailInboundBinding(Queue emailInboundQueue, TopicExchange emailExchange) {
-        return BindingBuilder
-                .bind(emailInboundQueue)
-                .to(emailExchange)
-                .with(processingProperties.routingKey());
-    }
-
-    // --- Embedding (embedding queue with DLQ routing, same exchange) ---
-
-    @Bean
-    public Queue emailEmbeddingQueue() {
-        return QueueBuilder.durable(embeddingProperties.queue())
-                .withArgument("x-dead-letter-exchange", processingProperties.exchange() + ".dlx")
-                .withArgument("x-dead-letter-routing-key", embeddingProperties.routingKey() + ".dlq")
-                .build();
-    }
-
-    @Bean
-    public Binding emailEmbeddingBinding(Queue emailEmbeddingQueue, TopicExchange emailExchange) {
-        return BindingBuilder
-                .bind(emailEmbeddingQueue)
-                .to(emailExchange)
-                .with(embeddingProperties.routingKey());
-    }
-
-    // --- Dead Letter Queue (shared DLX) ---
-
-    @Bean
-    public Queue inboundDeadLetterQueue() {
-        return QueueBuilder.durable(processingProperties.queue() + ".dlq").build();
-    }
-
-    @Bean
-    public Queue embeddingDeadLetterQueue() {
-        return QueueBuilder.durable(embeddingProperties.queue() + ".dlq").build();
+    public TopicExchange emailEventExchange() {
+        return new TopicExchange(properties.exchange());
     }
 
     @Bean
     public TopicExchange deadLetterExchange() {
-        return new TopicExchange(processingProperties.exchange() + ".dlx");
+        return new TopicExchange(dlxName());
+    }
+
+    // --- Sanitization queue ---
+
+    @Bean
+    public Queue emailSanitizationQueue() {
+        return buildQueue(properties.sanitizationQueue(), properties.sanitizationRoutingKey());
     }
 
     @Bean
-    public Binding inboundDeadLetterBinding(Queue inboundDeadLetterQueue, TopicExchange deadLetterExchange) {
-        return BindingBuilder
-                .bind(inboundDeadLetterQueue)
-                .to(deadLetterExchange)
-                .with(processingProperties.routingKey() + ".dlq");
+    public Binding emailSanitizationBinding(Queue emailSanitizationQueue, TopicExchange emailEventExchange) {
+        return bindToExchange(emailSanitizationQueue, emailEventExchange, properties.sanitizationRoutingKey());
+    }
+
+    @Bean
+    public Queue sanitizationDeadLetterQueue() {
+        return buildDlq(properties.sanitizationQueue());
+    }
+
+    @Bean
+    public Binding sanitizationDeadLetterBinding(Queue sanitizationDeadLetterQueue, TopicExchange deadLetterExchange) {
+        return bindToExchange(sanitizationDeadLetterQueue, deadLetterExchange, properties.sanitizationRoutingKey() + ".dlq");
+    }
+
+    // --- Embedding queue ---
+
+    @Bean
+    public Queue emailEmbeddingQueue() {
+        return buildQueue(properties.embeddingQueue(), properties.embeddingRoutingKey());
+    }
+
+    @Bean
+    public Binding emailEmbeddingBinding(Queue emailEmbeddingQueue, TopicExchange emailEventExchange) {
+        return bindToExchange(emailEmbeddingQueue, emailEventExchange, properties.embeddingRoutingKey());
+    }
+
+    @Bean
+    public Queue embeddingDeadLetterQueue() {
+        return buildDlq(properties.embeddingQueue());
     }
 
     @Bean
     public Binding embeddingDeadLetterBinding(Queue embeddingDeadLetterQueue, TopicExchange deadLetterExchange) {
-        return BindingBuilder
-                .bind(embeddingDeadLetterQueue)
-                .to(deadLetterExchange)
-                .with(embeddingProperties.routingKey() + ".dlq");
+        return bindToExchange(embeddingDeadLetterQueue, deadLetterExchange, properties.embeddingRoutingKey() + ".dlq");
     }
+
+    // --- Message converter ---
 
     @Bean
     public MessageConverter jacksonMessageConverter() {
         return new Jackson2JsonMessageConverter();
+    }
+
+    // --- Helpers ---
+
+    private Queue buildQueue(String queueName, String routingKey) {
+        return QueueBuilder.durable(queueName)
+                .withArgument("x-dead-letter-exchange", dlxName())
+                .withArgument("x-dead-letter-routing-key", routingKey + ".dlq")
+                .build();
+    }
+
+    private Queue buildDlq(String queueName) {
+        return QueueBuilder.durable(queueName + ".dlq").build();
+    }
+
+    private Binding bindToExchange(Queue queue, TopicExchange exchange, String routingKey) {
+        return BindingBuilder.bind(queue).to(exchange).with(routingKey);
+    }
+
+    private String dlxName() {
+        return properties.exchange() + ".dlx";
     }
 }

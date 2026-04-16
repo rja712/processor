@@ -1,4 +1,4 @@
-package com.inboxintelligence.processor.domain.sanitization;
+package com.inboxintelligence.processor.domain.sanitization.pipeline;
 
 import com.inboxintelligence.processor.config.SanitizationStep;
 
