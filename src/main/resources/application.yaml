@@ -42,8 +42,7 @@ embedding-provider:
   name: ${EMBEDDING_PROVIDER_NAME}
   ollama-url: ${EMBEDDING_OLLAMA_URL}
   model: ${EMBEDDING_MODEL}
-  num-ctx: 8192
-  max-chars: 30000
+  max-chars: 4500
 
 sanitization:
   quoted-text-patterns:

@@ -10,9 +10,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.util.List;
-import java.util.Objects;
-
 import static com.inboxintelligence.persistence.model.ProcessedStatus.*;
 
 @Service
@@ -27,55 +24,40 @@ public class EmailEmbeddingService {
 
     public void generateEmbedding(Long emailContentId) {
 
-        EmailContent email = emailContentService
+        log.info("Starting embedding for emailContent id: {}", emailContentId);
+        var emailContent = emailContentService
                 .findById(emailContentId)
                 .orElseThrow(() -> new IllegalStateException("EmailContent not found: " + emailContentId));
 
         try {
-            String cleanedText = readSanitizedContentPath(email);
 
-            if (!StringUtils.hasText(cleanedText)) {
-                log.warn("No processed content for email [id={}], marking failed", emailContentId);
-                emailContentService.updateProcessedStatus(email, PROCESSING_FAILED);
+            var storageProvider = storageProviderFactory.getProvider();
+            var embeddingProvider = embeddingProviderFactory.getProvider();
+
+            emailContentService.updateStatusAndNote(emailContent, EMBEDDING_STARTED, null);
+
+            String sanitizedContent = storageProvider.readContent(emailContent.getSanitizedContentPath());
+
+            if (!StringUtils.hasText(sanitizedContent)){
+                log.warn("No sanitized content for emailContent [id={}], marking failed", emailContentId);
+                emailContentService.updateStatusAndNote(emailContent, PROCESSING_FAILED, "No sanitized content found");
                 return;
             }
 
-            List<Double> vector = embeddingProviderFactory.getProvider().generateEmbedding(cleanedText);
-            log.info("EmailContent [id={}] embedding generated [dimensions={}]", emailContentId, vector.size());
+            float[] embedding = embeddingProvider.generateEmbedding(sanitizedContent);
+            log.info("EmailContent [id={}] embedding generated [dimensions={}]", emailContentId, embedding.length);
 
-            emailContentService.updateProcessedStatus(email, EMBEDDING_GENERATED);
-
-            email.setEmbedding(toFloatArray(vector));
-            email.setEmbeddingModel(embeddingProviderProperties.model());
-            email.setProcessedStatus(EMBEDDING_SAVED);
-            emailContentService.save(email);
-
+            emailContent.setEmbedding(embedding);
+            emailContent.setEmbeddingModel(embeddingProviderProperties.model());
+            emailContent.setProcessedStatus(EMBEDDING_GENERATED);
+            emailContentService.save(emailContent);
             log.info("EmailContent [id={}] embedding persisted [model={}]", emailContentId, embeddingProviderProperties.model());
 
         } catch (Exception e) {
             log.error("Failed to embed emailContent [id={}]", emailContentId, e);
-            emailContentService.updateProcessedStatus(email, PROCESSING_FAILED);
+            emailContentService.updateStatusAndNote(emailContent, PROCESSING_FAILED, e.getMessage());
             throw e;
         }
     }
 
-    private float[] toFloatArray(List<Double> source) {
-        float[] result = new float[source.size()];
-        for (int i = 0; i < source.size(); i++) {
-            result[i] = source.get(i).floatValue();
-        }
-        return result;
-    }
-
-    private String readSanitizedContentPath(EmailContent emailContent) {
-
-        String sanitizedContentPath = emailContent.getSanitizedContentPath();
-
-        if (!StringUtils.hasText(sanitizedContentPath)) {
-            return "";
-        }
-
-        var provider = storageProviderFactory.getProvider();
-        return Objects.requireNonNullElse(provider.readContent(sanitizedContentPath), "");
-    }
 }

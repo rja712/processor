@@ -7,7 +7,6 @@ public record EmbeddingProviderProperties(
         String name,
         String ollamaUrl,
         String model,
-        Integer numCtx,
         Integer maxChars
 ) {
 }

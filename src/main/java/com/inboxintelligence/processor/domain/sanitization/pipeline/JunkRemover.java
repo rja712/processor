@@ -47,6 +47,7 @@ public class JunkRemover {
         result = removeQuotedText(result);
         result = removeSignature(result);
         result = removeDisclaimers(result);
+        result = collapseWhitespace(result);
         return result;
     }
 
@@ -103,6 +104,17 @@ public class JunkRemover {
             }
         }
         return false;
+    }
+
+    private String collapseWhitespace(String content) {
+        String collapsed = content.replaceAll("[\\t ]+", " ")
+                .replaceAll("(\\s*\\n\\s*)+", "\n")
+                .trim();
+
+        if (collapsed.length() < content.length()) {
+            log.debug("Whitespace collapsed [{} -> {} chars]", content.length(), collapsed.length());
+        }
+        return collapsed;
     }
 
     private String removeDisclaimers(String content) {
