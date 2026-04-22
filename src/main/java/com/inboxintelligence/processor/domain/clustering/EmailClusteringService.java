@@ -37,14 +37,14 @@ public class EmailClusteringService {
 
             if (batchClusteringMonitor.isActive()) {
                 log.info("Batch clustering in process — skipping incremental assignment for emailContent [id={}]", emailContentId);
-                emailContentService.updateStatusAndNote(emailContent, CLUSTER_ASSIGNMENT_COMPLETED, null);
+                emailContentService.updateStatusAndNote(emailContent, CLUSTER_ASSIGNMENT_PAUSED, null);
                 return;
             }
 
             List<Cluster> clusters = clusterService.findByMailboxId(emailContent.getGmailMailboxId());
             if (clusters.isEmpty()) {
                 log.info("No clusters for mailbox [id={}] — skipping incremental assignment", emailContent.getGmailMailboxId());
-                emailContentService.updateStatusAndNote(emailContent, CLUSTER_ASSIGNMENT_COMPLETED, null);
+                emailContentService.updateStatusAndNote(emailContent, CLUSTER_ASSIGNMENT_PAUSED, null);
                 return;
             }
 
@@ -54,14 +54,14 @@ public class EmailClusteringService {
 
             if (enrichment.getEmbedding() == null) {
                 log.warn("No embedding on emailContent [id={}] — skipping incremental assignment", emailContentId);
-                emailContentService.updateStatusAndNote(emailContent, CLUSTER_ASSIGNMENT_COMPLETED, null);
+                emailContentService.updateStatusAndNote(emailContent, PROCESSING_FAILED, "No embedding found for emailContent");
                 return;
             }
 
             Cluster bestCluster = findBestCluster(enrichment.getEmbedding(), clusters);
             if (bestCluster == null) {
                 log.warn("No cluster with a centroid found for mailbox [id={}]", emailContent.getGmailMailboxId());
-                emailContentService.updateStatusAndNote(emailContent, CLUSTER_ASSIGNMENT_COMPLETED, null);
+                emailContentService.updateStatusAndNote(emailContent, PROCESSING_FAILED, "No cluster centroid found");
                 return;
             }
 
@@ -76,8 +76,7 @@ public class EmailClusteringService {
             clusterService.save(bestCluster);
 
             emailContentService.updateStatusAndNote(emailContent, CLUSTER_ASSIGNMENT_COMPLETED, null);
-            log.info("EmailContent [id={}] assigned to cluster [id={}, label={}, similarity={}]",
-                    emailContentId, bestCluster.getId(), bestCluster.getClusterLabel(), similarity);
+            log.info("EmailContent [id={}] assigned to cluster [id={}, label={}, similarity={}]", emailContentId, bestCluster.getId(), bestCluster.getClusterLabel(), similarity);
 
         } catch (Exception e) {
             log.error("Failed to assign cluster for emailContent [id={}]", emailContentId, e);
