@@ -44,7 +44,7 @@ public class EmailEmbeddingService {
 
             if (!StringUtils.hasText(sanitizedContent)) {
                 log.warn("No sanitized content for emailContent [id={}], marking failed", emailContentId);
-                emailContentService.updateStatusAndNote(emailContent, PROCESSING_FAILED, "No sanitized content found");
+                emailContentService.updateStatusAndNote(emailContent, EMBEDDING_FAILED, "No sanitized content found");
                 return;
             }
 
@@ -65,7 +65,7 @@ public class EmailEmbeddingService {
 
         } catch (Exception e) {
             log.error("Failed to embed emailContent [id={}]", emailContentId, e);
-            emailContentService.updateStatusAndNote(emailContent, PROCESSING_FAILED, e.getMessage());
+            emailContentService.updateStatusAndNote(emailContent, EMBEDDING_FAILED, e.getMessage());
             throw e;
         }
     }

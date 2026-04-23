@@ -40,7 +40,7 @@ public class EmailSanitizationService {
 
             if (!StringUtils.hasText(rawContent)) {
                 log.warn("No raw content for email id: {}", emailContentId);
-                emailContentService.updateStatusAndNote(emailContent, PROCESSING_FAILED, "No raw content");
+                emailContentService.updateStatusAndNote(emailContent, SANITIZATION_FAILED, "No raw content");
                 return;
             }
 
@@ -69,7 +69,7 @@ public class EmailSanitizationService {
 
         } catch (Exception e) {
             log.error("Failed to process emailContent [id={}]", emailContentId, e);
-            emailContentService.updateStatusAndNote(emailContent, PROCESSING_FAILED, e.getMessage());
+            emailContentService.updateStatusAndNote(emailContent, SANITIZATION_FAILED, e.getMessage());
             throw e;
         }
     }

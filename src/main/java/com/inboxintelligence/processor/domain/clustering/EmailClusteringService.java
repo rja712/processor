@@ -20,7 +20,7 @@ import static com.inboxintelligence.persistence.model.ProcessedStatus.*;
 @RequiredArgsConstructor
 public class EmailClusteringService {
 
-    private final BatchClusteringLock batchClusteringMonitor;
+    private final BatchClusteringLock batchClusteringLock;
     private final EmailContentService emailContentService;
     private final EmailEnrichmentService emailEnrichmentService;
     private final ClusterService clusterService;
@@ -35,7 +35,7 @@ public class EmailClusteringService {
 
             emailContentService.updateStatusAndNote(emailContent, CLUSTER_ASSIGNMENT_STARTED, null);
 
-            if (batchClusteringMonitor.isActive()) {
+            if (batchClusteringLock.isActive()) {
                 log.info("Batch clustering in process — skipping incremental assignment for emailContent [id={}]", emailContentId);
                 emailContentService.updateStatusAndNote(emailContent, CLUSTER_ASSIGNMENT_PAUSED, null);
                 return;
@@ -54,14 +54,14 @@ public class EmailClusteringService {
 
             if (enrichment.getEmbedding() == null) {
                 log.warn("No embedding on emailContent [id={}] — skipping incremental assignment", emailContentId);
-                emailContentService.updateStatusAndNote(emailContent, PROCESSING_FAILED, "No embedding found for emailContent");
+                emailContentService.updateStatusAndNote(emailContent, CLUSTER_ASSIGNMENT_FAILED, "No embedding found for emailContent");
                 return;
             }
 
             Cluster bestCluster = findBestCluster(enrichment.getEmbedding(), clusters);
             if (bestCluster == null) {
                 log.warn("No cluster with a centroid found for mailbox [id={}]", emailContent.getGmailMailboxId());
-                emailContentService.updateStatusAndNote(emailContent, PROCESSING_FAILED, "No cluster centroid found");
+                emailContentService.updateStatusAndNote(emailContent, CLUSTER_ASSIGNMENT_FAILED, "No cluster centroid found");
                 return;
             }
 
@@ -80,7 +80,7 @@ public class EmailClusteringService {
 
         } catch (Exception e) {
             log.error("Failed to assign cluster for emailContent [id={}]", emailContentId, e);
-            emailContentService.updateStatusAndNote(emailContent, PROCESSING_FAILED, e.getMessage());
+            emailContentService.updateStatusAndNote(emailContent, CLUSTER_ASSIGNMENT_FAILED, e.getMessage());
             throw e;
         }
     }
