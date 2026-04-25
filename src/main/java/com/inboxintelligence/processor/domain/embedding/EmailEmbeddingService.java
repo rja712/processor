@@ -1,10 +1,13 @@
 package com.inboxintelligence.processor.domain.embedding;
 
+import com.inboxintelligence.persistence.model.entity.EmailContent;
 import com.inboxintelligence.persistence.model.entity.EmailEnrichment;
 import com.inboxintelligence.persistence.service.EmailContentService;
 import com.inboxintelligence.persistence.service.EmailEnrichmentService;
+import com.inboxintelligence.persistence.storage.EmailStorageProvider;
 import com.inboxintelligence.persistence.storage.EmailStorageProviderFactory;
 import com.inboxintelligence.processor.config.EmbeddingProviderProperties;
+import com.inboxintelligence.processor.domain.embedding.factory.EmbeddingProvider;
 import com.inboxintelligence.processor.domain.embedding.factory.EmbeddingProviderFactory;
 import com.inboxintelligence.processor.outbound.EmailClusteringPublisher;
 import lombok.RequiredArgsConstructor;
@@ -29,7 +32,7 @@ public class EmailEmbeddingService {
     public void generateEmbedding(Long emailContentId) {
 
         log.info("Starting embedding for emailContent id: {}", emailContentId);
-        var emailContent = emailContentService
+        EmailContent emailContent = emailContentService
                 .findById(emailContentId)
                 .orElseThrow(() -> new IllegalStateException("EmailContent not found: " + emailContentId));
 
@@ -40,8 +43,8 @@ public class EmailEmbeddingService {
 
         try {
 
-            var storageProvider = storageProviderFactory.getProvider();
-            var embeddingProvider = embeddingProviderFactory.getProvider();
+            EmailStorageProvider storageProvider = storageProviderFactory.getProvider();
+            EmbeddingProvider embeddingProvider = embeddingProviderFactory.getProvider();
 
             emailContentService.updateStatusAndNote(emailContent, EMBEDDING_STARTED, null);
 

@@ -17,7 +17,7 @@ public class TextNormalizer {
 
     private static Map<String, String> buildReplacementMap() {
 
-        var map = new LinkedHashMap<String, String>();
+        LinkedHashMap<String, String> map = new LinkedHashMap<>();
 
         // Quotes: ' ' ‚ ‹ › → '    " " „ « » → "
         map.put("\u2018", "'");
@@ -70,7 +70,7 @@ public class TextNormalizer {
 
         String result = content.replace("\r\n", "\n").replace("\r", "\n");
 
-        for (var entry : CHARACTER_REPLACEMENTS.entrySet()) {
+        for (Map.Entry<String, String> entry : CHARACTER_REPLACEMENTS.entrySet()) {
             result = result.replace(entry.getKey(), entry.getValue());
         }
 

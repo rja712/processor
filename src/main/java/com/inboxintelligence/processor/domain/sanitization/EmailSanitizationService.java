@@ -1,6 +1,8 @@
 package com.inboxintelligence.processor.domain.sanitization;
 
+import com.inboxintelligence.persistence.model.entity.EmailContent;
 import com.inboxintelligence.persistence.service.EmailContentService;
+import com.inboxintelligence.persistence.storage.EmailStorageProvider;
 import com.inboxintelligence.persistence.storage.EmailStorageProviderFactory;
 import com.inboxintelligence.processor.domain.sanitization.pipeline.ContentSanitizationPipelineRegistry;
 import com.inboxintelligence.processor.outbound.EmailEmbeddingPublisher;
@@ -24,7 +26,7 @@ public class EmailSanitizationService {
     public void sanitizeEmail(Long emailContentId) {
 
         log.info("Starting sanitization for email id: {}", emailContentId);
-        var emailContent = emailContentService
+        EmailContent emailContent = emailContentService
                 .findById(emailContentId)
                 .orElseThrow(() -> new RuntimeException("EmailContent not found for id: " + emailContentId));
 
@@ -35,7 +37,7 @@ public class EmailSanitizationService {
 
         try {
 
-            var provider = storageProviderFactory.getProvider();
+            EmailStorageProvider provider = storageProviderFactory.getProvider();
             emailContentService.updateStatusAndNote(emailContent, SANITIZATION_STARTED, null);
 
             String html = provider.readContent(emailContent.getBodyHtmlContentPath());

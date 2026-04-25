@@ -8,6 +8,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import java.lang.reflect.Method;
 import java.util.Comparator;
 import java.util.List;
 
@@ -52,7 +53,7 @@ public class ContentSanitizationPipelineRegistry {
     private String invokeSanitizationStep(Object bean, String content) {
 
         try {
-            var method = bean.getClass().getMethod("process", String.class);
+            Method method = bean.getClass().getMethod("process", String.class);
             if (String.class.equals(method.getReturnType())) {
                 return (String) method.invoke(bean, content);
             }

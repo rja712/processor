@@ -12,6 +12,7 @@ spring:
     driver-class-name: org.postgresql.Driver
 
   jpa:
+    open-in-view: false
     hibernate:
       ddl-auto: validate
     show-sql: false
@@ -42,7 +43,7 @@ spring:
       clustering-routing-key: ${RABBITMQ_EMAIL_CLUSTERING_ROUTING_KEY}
 
 redis-lock:
-  key-prefix: ${REDIS_BATCH_CLUSTERING_KEY_PREFIX}
+  key-prefix: ${REDIS_BATCH_CLUSTERING_LOCK_KEY_PREFIX}
 
 clustering:
   incremental:

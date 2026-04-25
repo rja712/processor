@@ -2,6 +2,7 @@ package com.inboxintelligence.processor.domain.clustering;
 
 import com.inboxintelligence.persistence.model.ClusterAssignmentType;
 import com.inboxintelligence.persistence.model.entity.Cluster;
+import com.inboxintelligence.persistence.model.entity.EmailContent;
 import com.inboxintelligence.persistence.model.entity.EmailEnrichment;
 import com.inboxintelligence.persistence.service.ClusterService;
 import com.inboxintelligence.persistence.service.EmailContentService;
@@ -31,7 +32,7 @@ public class EmailClusteringService {
 
     public void assignCluster(Long emailContentId) {
 
-        var emailContent = emailContentService
+        EmailContent emailContent = emailContentService
                 .findById(emailContentId)
                 .orElseThrow(() -> new IllegalStateException("EmailContent not found: " + emailContentId));
 
@@ -76,7 +77,7 @@ public class EmailClusteringService {
             double similarity = cosineSimilarity(enrichment.getEmbedding(), bestCluster.getCentroid());
 
             if (similarity < minSimilarityThreshold) {
-                log.info("EmailContent [id={}] similarity {:.4f} below threshold {:.4f} — deferring to batch", emailContentId, similarity, minSimilarityThreshold);
+                log.info("EmailContent [id={}] similarity {} below threshold {} — deferring to batch", emailContentId, String.format("%.4f", similarity), String.format("%.4f", minSimilarityThreshold));
                 emailContentService.updateStatusAndNote(emailContent, CLUSTER_ASSIGNMENT_DEFERRED, "similarity=" + String.format("%.4f", similarity));
                 return;
             }

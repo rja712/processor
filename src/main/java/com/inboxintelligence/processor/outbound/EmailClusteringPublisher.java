@@ -21,7 +21,7 @@ public class EmailClusteringPublisher {
     private final EmailContentService emailContentService;
 
     public void publishClusteringEvent(EmailContent emailContent) {
-        var event = new EmailEvent(emailContent.getId());
+        EmailEvent event = new EmailEvent(emailContent.getId());
         rabbitTemplate.convertAndSend(properties.exchange(), properties.clusteringRoutingKey(), event);
         emailContentService.updateStatusAndNote(emailContent, PUBLISHED_FOR_CLUSTER_ASSIGNMENT, null);
         log.debug("Published clustering event for emailContent [id={}]", emailContent.getId());
