@@ -33,6 +33,11 @@ public class EmailEmbeddingService {
                 .findById(emailContentId)
                 .orElseThrow(() -> new IllegalStateException("EmailContent not found: " + emailContentId));
 
+        if (emailContent.getProcessedStatus().ordinal() > SANITIZATION_COMPLETED.ordinal() && emailContent.getProcessedStatus() != EMBEDDING_STARTED) {
+            log.warn("EmailContent [id={}] already past embedding (status={}) — skipping redelivery", emailContentId, emailContent.getProcessedStatus());
+            return;
+        }
+
         try {
 
             var storageProvider = storageProviderFactory.getProvider();

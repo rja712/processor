@@ -28,6 +28,11 @@ public class EmailSanitizationService {
                 .findById(emailContentId)
                 .orElseThrow(() -> new RuntimeException("EmailContent not found for id: " + emailContentId));
 
+        if (emailContent.getProcessedStatus().ordinal() > PUBLISHED_FOR_SANITIZATION.ordinal() && emailContent.getProcessedStatus() != SANITIZATION_STARTED) {
+            log.warn("EmailContent [id={}] already past sanitization (status={}) — skipping redelivery", emailContentId, emailContent.getProcessedStatus());
+            return;
+        }
+
         try {
 
             var provider = storageProviderFactory.getProvider();

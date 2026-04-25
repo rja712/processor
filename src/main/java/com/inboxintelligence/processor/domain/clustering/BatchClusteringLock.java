@@ -2,6 +2,7 @@ package com.inboxintelligence.processor.domain.clustering;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -10,16 +11,22 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class BatchClusteringLock {
 
-    private static final String BATCH_CLUSTERING_KEY = "BATCH_CLUSTERING_IN_PROCESS";
+    @Value("${redis-lock.key-prefix}")
+    private String keyPrefix;
 
     private final StringRedisTemplate redisTemplate;
 
-    public boolean isActive() {
-        String value = redisTemplate.opsForValue().get(BATCH_CLUSTERING_KEY);
+    public boolean isActive(Long mailboxId) {
+        String key = mailboxKey(mailboxId);
+        String value = redisTemplate.opsForValue().get(key);
         boolean active = Boolean.parseBoolean(value);
         if (active) {
-            log.debug("Redis key [{}] is active — batch clustering in progress", BATCH_CLUSTERING_KEY);
+            log.debug("Redis key [{}] is active — batch clustering in progress for mailbox [{}]", key, mailboxId);
         }
         return active;
+    }
+
+    private String mailboxKey(Long mailboxId) {
+        return keyPrefix + ":mailbox:" + mailboxId;
     }
 }

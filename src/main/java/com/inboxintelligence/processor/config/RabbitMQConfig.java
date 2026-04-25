@@ -2,16 +2,45 @@ package com.inboxintelligence.processor.config;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.core.*;
+import org.springframework.amqp.rabbit.config.RetryInterceptorBuilder;
+import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
+import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.rabbit.retry.RejectAndDontRequeueRecoverer;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.retry.interceptor.RetryOperationsInterceptor;
 
 @Configuration
 @RequiredArgsConstructor
 public class RabbitMQConfig {
 
     private final EmailEventRabbitMQProperties properties;
+
+
+
+    @Bean
+    public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
+            ConnectionFactory connectionFactory,
+            MessageConverter jacksonMessageConverter) {
+
+        RetryOperationsInterceptor retryInterceptor = RetryInterceptorBuilder.stateless()
+                .maxAttempts(3)
+                .backOffOptions(1_000L, 2.0, 10_000L) // 1s → 2s → 4s (capped at 10s)
+                .recoverer(new RejectAndDontRequeueRecoverer()) // → DLQ after 3 attempts
+                .build();
+
+        SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+        factory.setConnectionFactory(connectionFactory);
+        factory.setMessageConverter(jacksonMessageConverter);
+        factory.setPrefetchCount(5);
+        factory.setConcurrentConsumers(2);
+        factory.setMaxConcurrentConsumers(5);
+        factory.setDefaultRequeueRejected(false);
+        factory.setAdviceChain(retryInterceptor);
+        return factory;
+    }
 
     // --- Shared email-event exchange + DLX ---
 

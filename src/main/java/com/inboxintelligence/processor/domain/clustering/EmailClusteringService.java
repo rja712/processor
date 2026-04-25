@@ -8,6 +8,7 @@ import com.inboxintelligence.persistence.service.EmailContentService;
 import com.inboxintelligence.persistence.service.EmailEnrichmentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -20,6 +21,9 @@ import static com.inboxintelligence.persistence.model.ProcessedStatus.*;
 @RequiredArgsConstructor
 public class EmailClusteringService {
 
+    @Value("${clustering.incremental.min-similarity-threshold}")
+    private double minSimilarityThreshold;
+
     private final BatchClusteringLock batchClusteringLock;
     private final EmailContentService emailContentService;
     private final EmailEnrichmentService emailEnrichmentService;
@@ -31,20 +35,24 @@ public class EmailClusteringService {
                 .findById(emailContentId)
                 .orElseThrow(() -> new IllegalStateException("EmailContent not found: " + emailContentId));
 
-        try {
+        if (emailContent.getProcessedStatus() == CLUSTER_ASSIGNMENT_COMPLETED) {
+            log.warn("EmailContent [id={}] already cluster-assigned — skipping redelivery", emailContentId);
+            return;
+        }
 
+        try {
             emailContentService.updateStatusAndNote(emailContent, CLUSTER_ASSIGNMENT_STARTED, null);
 
-            if (batchClusteringLock.isActive()) {
-                log.info("Batch clustering in process — skipping incremental assignment for emailContent [id={}]", emailContentId);
-                emailContentService.updateStatusAndNote(emailContent, CLUSTER_ASSIGNMENT_PAUSED, null);
+            if (batchClusteringLock.isActive(emailContent.getGmailMailboxId())) {
+                log.info("Batch clustering active for mailbox [id={}] — pausing incremental assignment for emailContent [id={}]", emailContent.getGmailMailboxId(), emailContentId);
+                emailContentService.updateStatusAndNote(emailContent, CLUSTER_ASSIGNMENT_DEFERRED, null);
                 return;
             }
 
             List<Cluster> clusters = clusterService.findByMailboxId(emailContent.getGmailMailboxId());
             if (clusters.isEmpty()) {
-                log.info("No clusters for mailbox [id={}] — skipping incremental assignment", emailContent.getGmailMailboxId());
-                emailContentService.updateStatusAndNote(emailContent, CLUSTER_ASSIGNMENT_PAUSED, null);
+                log.info("No clusters for mailbox [id={}] — deferring assignment for emailContent [id={}]", emailContent.getGmailMailboxId(), emailContentId);
+                emailContentService.updateStatusAndNote(emailContent, CLUSTER_ASSIGNMENT_DEFERRED, null);
                 return;
             }
 
@@ -54,7 +62,7 @@ public class EmailClusteringService {
 
             if (enrichment.getEmbedding() == null) {
                 log.warn("No embedding on emailContent [id={}] — skipping incremental assignment", emailContentId);
-                emailContentService.updateStatusAndNote(emailContent, CLUSTER_ASSIGNMENT_FAILED, "No embedding found for emailContent");
+                emailContentService.updateStatusAndNote(emailContent, CLUSTER_ASSIGNMENT_FAILED, "No embedding found");
                 return;
             }
 
@@ -66,6 +74,12 @@ public class EmailClusteringService {
             }
 
             double similarity = cosineSimilarity(enrichment.getEmbedding(), bestCluster.getCentroid());
+
+            if (similarity < minSimilarityThreshold) {
+                log.info("EmailContent [id={}] similarity {:.4f} below threshold {:.4f} — deferring to batch", emailContentId, similarity, minSimilarityThreshold);
+                emailContentService.updateStatusAndNote(emailContent, CLUSTER_ASSIGNMENT_DEFERRED, "similarity=" + String.format("%.4f", similarity));
+                return;
+            }
 
             enrichment.setClusterId(bestCluster.getId());
             enrichment.setClusterProbability(similarity);
@@ -90,9 +104,7 @@ public class EmailClusteringService {
         double bestSimilarity = Double.NEGATIVE_INFINITY;
 
         for (Cluster cluster : clusters) {
-            if (cluster.getCentroid() == null) {
-                continue;
-            }
+            if (cluster.getCentroid() == null) continue;
             double similarity = cosineSimilarity(embedding, cluster.getCentroid());
             if (similarity > bestSimilarity) {
                 bestSimilarity = similarity;
@@ -103,17 +115,13 @@ public class EmailClusteringService {
     }
 
     private double cosineSimilarity(float[] a, float[] b) {
-        double dot = 0.0;
-        double normA = 0.0;
-        double normB = 0.0;
+        double dot = 0.0, normA = 0.0, normB = 0.0;
         for (int i = 0; i < a.length; i++) {
             dot  += (double) a[i] * b[i];
             normA += (double) a[i] * a[i];
             normB += (double) b[i] * b[i];
         }
-        if (normA == 0.0 || normB == 0.0) {
-            return 0.0;
-        }
+        if (normA == 0.0 || normB == 0.0) return 0.0;
         return dot / (Math.sqrt(normA) * Math.sqrt(normB));
     }
 }

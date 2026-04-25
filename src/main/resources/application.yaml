@@ -41,6 +41,13 @@ spring:
       clustering-queue: ${RABBITMQ_EMAIL_CLUSTERING_QUEUE}
       clustering-routing-key: ${RABBITMQ_EMAIL_CLUSTERING_ROUTING_KEY}
 
+redis-lock:
+  key-prefix: ${REDIS_BATCH_CLUSTERING_KEY_PREFIX}
+
+clustering:
+  incremental:
+    min-similarity-threshold: ${CLUSTERING_MIN_SIMILARITY_THRESHOLD}
+
 email-storage-provider:
   name: ${EMAIL_STORAGE_PROVIDER_NAME}
   local-base-path: ${EMAIL_STORAGE_LOCAL_BASE_PATH}
