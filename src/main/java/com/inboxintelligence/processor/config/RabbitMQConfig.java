@@ -34,9 +34,9 @@ public class RabbitMQConfig {
         SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
         factory.setConnectionFactory(connectionFactory);
         factory.setMessageConverter(jacksonMessageConverter);
-        factory.setPrefetchCount(5);
-        factory.setConcurrentConsumers(2);
-        factory.setMaxConcurrentConsumers(5);
+        factory.setPrefetchCount(10);
+        factory.setConcurrentConsumers(1);
+        factory.setMaxConcurrentConsumers(1);
         factory.setDefaultRequeueRejected(false);
         factory.setAdviceChain(retryInterceptor);
         return factory;
