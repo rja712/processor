@@ -1,6 +1,8 @@
 package com.inboxintelligence.processor.domain.sanitization;
 
+import com.inboxintelligence.persistence.model.entity.EmailAttachment;
 import com.inboxintelligence.persistence.model.entity.EmailContent;
+import com.inboxintelligence.persistence.service.EmailAttachmentService;
 import com.inboxintelligence.persistence.service.EmailContentService;
 import com.inboxintelligence.persistence.storage.EmailStorageProvider;
 import com.inboxintelligence.persistence.storage.EmailStorageProviderFactory;
@@ -11,6 +13,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 import static com.inboxintelligence.persistence.model.ProcessedStatus.*;
 
 @Slf4j
@@ -20,6 +25,7 @@ public class EmailSanitizationService {
 
     private final EmailEmbeddingPublisher emailEmbeddingPublisher;
     private final EmailContentService emailContentService;
+    private final EmailAttachmentService emailAttachmentService;
     private final EmailStorageProviderFactory storageProviderFactory;
     private final ContentSanitizationPipelineRegistry pipelineRegistry;
 
@@ -61,14 +67,23 @@ public class EmailSanitizationService {
 
             log.info("Sanitized email [id={}, {} -> {} chars]", emailContent.getId(), originalLength, cleanedText.length());
 
-            String sanitizedContentPath = provider.writeContent(emailContent.getGmailMailboxId(), emailContent.getMessageId(), "processed_content.txt", cleanedText);
+            String enrichedContent = enrichSanitizedContent(emailContent, cleanedText);
+            String path = provider.writeContent(emailContent.getGmailMailboxId(), emailContent.getMessageId(), "processed_content.txt", enrichedContent);
 
-
-            emailContent.setSanitizedContentPath(sanitizedContentPath);
+            emailContent.setSanitizedContentPath(path);
             emailContent.setProcessedStatus(SANITIZATION_COMPLETED);
+
+            //Clean up - Sanitized Content is always persisted
+            provider.deleteContent(emailContent.getRawMessagePath());
+            provider.deleteContent(emailContent.getBodyHtmlContentPath());
+            provider.deleteContent(emailContent.getBodyContentPath());
+            emailContent.setRawMessagePath(null);
+            emailContent.setBodyHtmlContentPath(null);
+            emailContent.setBodyContentPath(null);
+
             emailContentService.save(emailContent);
 
-            log.info("Sanitized content stored at: {} for email id: {}", sanitizedContentPath, emailContent.getId());
+            log.info("Sanitized content stored at: {} for email id: {}", path, emailContent.getId());
 
             emailEmbeddingPublisher.publishEmbeddingEvent(emailContent);
             log.info("EmailContent [id={}] sanitized and queued for embedding", emailContentId);
@@ -81,5 +96,29 @@ public class EmailSanitizationService {
         }
     }
 
+    private String enrichSanitizedContent(EmailContent emailContent, String sanitizedBody) {
+
+        StringBuilder sb = new StringBuilder();
+
+        if (StringUtils.hasText(emailContent.getFromAddress()))
+            sb.append("From: ").append(emailContent.getFromAddress()).append("\n");
+        if (StringUtils.hasText(emailContent.getToAddress()))
+            sb.append("To: ").append(emailContent.getToAddress()).append("\n");
+        if (StringUtils.hasText(emailContent.getSubject()))
+            sb.append("Subject: ").append(emailContent.getSubject()).append("\n");
+
+        List<String> attachmentNames = emailAttachmentService.findByEmailContentId(emailContent.getId())
+                .stream()
+                .filter(a -> !Boolean.TRUE.equals(a.getIsInline()))
+                .map(EmailAttachment::getFileName)
+                .collect(Collectors.toList());
+
+        if (!attachmentNames.isEmpty())
+            sb.append("Attachments: ").append(String.join(", ", attachmentNames)).append("\n");
+
+        sb.append("Content: ").append(sanitizedBody);
+
+        return sb.toString();
+    }
 
 }
