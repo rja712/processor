@@ -8,7 +8,6 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
-import java.lang.reflect.Method;
 import java.util.Comparator;
 import java.util.List;
 
@@ -18,56 +17,38 @@ import java.util.List;
 public class ContentSanitizationPipelineRegistry {
 
     private final ApplicationContext applicationContext;
-    private List<Object> sanitizationPipeline;
+    private List<SanitizationStepProcessor> sanitizationPipeline;
 
     @PostConstruct
     void buildSanitizationPipeline() {
 
         sanitizationPipeline = applicationContext.getBeansWithAnnotation(SanitizationStep.class)
                 .values().stream()
-                .sorted(Comparator.comparingInt(bean -> bean.getClass().getAnnotation(SanitizationStep.class).order()))
-                .peek(bean -> log.info("Preparing SanitizationPipeline Step {}: {}", getSanitizationStepOrder(bean), getSanitizationStepName(bean)))
+                .filter(bean -> bean instanceof SanitizationStepProcessor)
+                .map(bean -> (SanitizationStepProcessor) bean)
+                .sorted(Comparator.comparingInt(step -> step.getClass().getAnnotation(SanitizationStep.class).order()))
+                .peek(step -> log.info("Preparing SanitizationPipeline Step {}: {}",
+                        step.getClass().getAnnotation(SanitizationStep.class).order(),
+                        step.getClass().getSimpleName()))
                 .toList();
 
         log.info("Sanitization pipeline built with {} steps", sanitizationPipeline.size());
     }
 
-
     public String executeSanitizationPipeline(String content) {
 
-        for (Object bean : sanitizationPipeline) {
+        for (SanitizationStepProcessor step : sanitizationPipeline) {
             if (StringUtils.hasText(content)) {
                 try {
                     String before = content;
-                    content = invokeSanitizationStep(bean, content);
-                    log.debug("{} : {} -> {} chars", getSanitizationStepName(bean), before.length(), content.length());
+                    content = step.process(content);
+                    log.debug("{} : {} -> {} chars", step.getClass().getSimpleName(), before.length(), content.length());
                 } catch (Exception e) {
-                    throw new IllegalStateException("Failed at step: " + getSanitizationStepName(bean), e);
+                    throw new IllegalStateException("Failed at step: " + step.getClass().getSimpleName(), e);
                 }
             }
         }
 
         return content;
-    }
-
-    private String invokeSanitizationStep(Object bean, String content) {
-
-        try {
-            Method method = bean.getClass().getMethod("process", String.class);
-            if (String.class.equals(method.getReturnType())) {
-                return (String) method.invoke(bean, content);
-            }
-            throw new IllegalStateException(getSanitizationStepName(bean) + ": process(String) must return String");
-        } catch (Exception e) {
-            throw new IllegalStateException(getSanitizationStepName(bean) + ": must have 'public String process(String)' method", e);
-        }
-    }
-
-    private String getSanitizationStepName(Object bean) {
-        return bean.getClass().getSimpleName();
-    }
-
-    private int getSanitizationStepOrder(Object bean) {
-        return bean.getClass().getAnnotation(SanitizationStep.class).order();
     }
 }

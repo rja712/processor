@@ -5,7 +5,7 @@ import com.inboxintelligence.processor.config.SanitizationStep;
 import java.util.regex.Pattern;
 
 @SanitizationStep(order = 2, description = "Remove inline cid: and image references")
-public class InlineReferenceRemover {
+public class InlineReferenceRemover implements SanitizationStepProcessor {
 
     private static final Pattern CID_BRACKET = Pattern.compile("\\[cid:[^\\]]*]");
     private static final Pattern IMAGE_BRACKET = Pattern.compile("\\[image:[^\\]]*]");

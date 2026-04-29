@@ -7,7 +7,7 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 @SanitizationStep(order = 4, description = "Normalize fancy/unicode characters into simple plain text")
-public class TextNormalizer {
+public class TextNormalizer implements SanitizationStepProcessor {
 
     private static final Map<String, String> CHARACTER_REPLACEMENTS = buildReplacementMap();
     private static final Pattern UNICODE_SPACES = Pattern.compile("[\u00A0\u2000-\u200A\u202F\u205F\u3000]");

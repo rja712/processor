@@ -16,7 +16,7 @@ import java.util.regex.PatternSyntaxException;
 @Slf4j
 @RequiredArgsConstructor
 @SanitizationStep(order = 3, description = "Remove quoted replies, signatures, sign-offs, and disclaimers")
-public class JunkRemover {
+public class JunkRemover implements SanitizationStepProcessor {
 
     private static final int MAX_SIGNATURE_LINES = 8;
     private static final int MIN_DISCLAIMER_KEYWORD_HITS = 2;
@@ -80,7 +80,7 @@ public class JunkRemover {
         for (int i = lines.length - 1; i >= searchFrom; i--) {
             if (matchesSignaturePattern(lines[i]) || matchesSignOffPhrase(lines[i])) {
                 log.debug("Signature/sign-off detected at line {}", i);
-                return String.join("\n", List.of(lines).subList(0, i));
+                return String.join("\n", Arrays.copyOfRange(lines, 0, i));
             }
         }
 

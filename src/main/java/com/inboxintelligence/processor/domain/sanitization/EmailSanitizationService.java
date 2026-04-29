@@ -13,7 +13,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.inboxintelligence.persistence.model.ProcessedStatus.*;
@@ -22,6 +24,14 @@ import static com.inboxintelligence.persistence.model.ProcessedStatus.*;
 @Service
 @RequiredArgsConstructor
 public class EmailSanitizationService {
+
+    private static final Set<ProcessedStatus> SANITIZATION_ALREADY_DONE = EnumSet.of(
+            SANITIZATION_COMPLETED, SANITIZATION_FAILED,
+            PUBLISHED_FOR_EMBEDDING, EMBEDDING_STARTED, EMBEDDING_GENERATED, EMBEDDING_FAILED,
+            PUBLISHED_FOR_CLUSTER_ASSIGNMENT, CLUSTER_ASSIGNMENT_STARTED,
+            CLUSTER_ASSIGNMENT_DEFERRED, CLUSTER_ASSIGNMENT_COMPLETED, CLUSTER_ASSIGNMENT_FAILED,
+            UNKNOWN_FAILURE
+    );
 
     private final EmailEmbeddingPublisher emailEmbeddingPublisher;
     private final EmailContentService emailContentService;
@@ -36,7 +46,7 @@ public class EmailSanitizationService {
                 .findById(emailContentId)
                 .orElseThrow(() -> new RuntimeException("EmailContent not found for id: " + emailContentId));
 
-        if (emailContent.getProcessedStatus().ordinal() > PUBLISHED_FOR_SANITIZATION.ordinal() && emailContent.getProcessedStatus() != SANITIZATION_STARTED) {
+        if (SANITIZATION_ALREADY_DONE.contains(emailContent.getProcessedStatus())) {
             log.warn("EmailContent [id={}] already past sanitization (status={}) — skipping redelivery", emailContentId, emailContent.getProcessedStatus());
             return;
         }

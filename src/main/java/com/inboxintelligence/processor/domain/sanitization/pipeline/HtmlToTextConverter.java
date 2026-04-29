@@ -12,7 +12,7 @@ import org.jsoup.select.NodeVisitor;
 import java.util.Set;
 
 @SanitizationStep(order = 1, description = "Convert HTML to plain text using Jsoup")
-public class HtmlToTextConverter {
+public class HtmlToTextConverter implements SanitizationStepProcessor {
 
     private static final Set<String> BLOCK_TAGS = Set.of("p", "div", "tr", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "pre", "hr", "table", "thead", "tbody", "ul", "ol");
     private static final Set<String> TABLE_TAGS = Set.of("td", "th");

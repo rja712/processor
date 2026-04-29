@@ -25,6 +25,6 @@ public class EmailEmbeddingPublisher {
         EmailEvent event = new EmailEvent(emailContent.getId());
         rabbitTemplate.convertAndSend(properties.exchange(), properties.embeddingRoutingKey(), event);
         emailContentService.updateStatusAndNote(emailContent, PUBLISHED_FOR_EMBEDDING, null);
-        log.debug("Published EmailSanitizedEvent for event: {}", event);
+        log.debug("Published EmailEmbeddingEvent for event: {}", event);
     }
 }

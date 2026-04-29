@@ -25,8 +25,10 @@ public class OllamaEmbeddingProvider implements EmbeddingProvider {
 
         String input = text;
         if (properties.maxChars() != null && input.length() > properties.maxChars()) {
-            log.warn("Truncating embedding input [{} -> {} chars]", input.length(), properties.maxChars());
-            input = input.substring(0, properties.maxChars());
+            int cutoff = input.lastIndexOf(' ', properties.maxChars());
+            cutoff = cutoff > 0 ? cutoff : properties.maxChars();
+            log.warn("Truncating embedding input [{} -> {} chars]", input.length(), cutoff);
+            input = input.substring(0, cutoff);
         }
 
         log.debug("Requesting embedding from Ollama [model={}, textLength={}]", properties.model(), input.length());
